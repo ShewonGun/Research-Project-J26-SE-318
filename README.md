@@ -68,6 +68,19 @@ HydroTwin supports two complementary user personas:
   ward-specific safety advisories and repair countdowns without creating
   unnecessary city-wide panic.
 
+## Data and decision flow
+
+1. IoT edge devices capture pressure, flow, acoustic, and water-quality
+   telemetry from the distribution network.
+2. The digital twin combines live telemetry with network topology and
+   EPANET/WNTR simulations to maintain an operational view of the system.
+3. Forecasting, leak, fraud, and contamination models analyze the shared data
+   and attach confidence and location information to their findings.
+4. Utility engineers receive prioritized alerts, recommended interventions, and
+   valve-closure or flushing playbooks in the Admin Control Center.
+5. Verified public-health impacts are translated into localized advisories for
+   the Consumer WaterSafe Portal.
+
 ## Repository services
 
 The current repository is organized around the platform's core services:
