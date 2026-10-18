@@ -1,18 +1,29 @@
-# Python cache
+# Python cache & bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 .ipynb_checkpoints/
+.pytest_cache/
 
-# Virtual Environments
+# Virtual Environments & Environment Variables
 venv/
 env/
 .env
+.env.local
 
-# Large datasets (Keep datasets local or track via Git LFS if needed)
-# kaduwela_iws_risk_dataset.npz is ~15-20MB. You can commit it or exclude it:
-data/processed/*.npz
+# Node & Frontend Build Artifacts
+node_modules/
+dist/
+.vite/
+.vite-temp/
+dist-ssr/
+*.local
 
-# Model backups / temporary checkpoints
-*.tar.gz
+# Temporary files & logs
 *.tmp
+*.log
+*.tar.gz
+
+# Large dataset archives (Keep local or track via DVC/Git-LFS)
+data/processed/*.npz
+frontend/public/data/**/*.npz
