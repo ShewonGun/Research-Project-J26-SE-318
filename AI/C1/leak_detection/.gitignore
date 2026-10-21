@@ -1,0 +1,5 @@
+# Trained model binary is reproducible from train_leak_model.py
+results/*.joblib
+__pycache__/
+results_calibrated/*.joblib
+results_calibrated_100/*.joblib

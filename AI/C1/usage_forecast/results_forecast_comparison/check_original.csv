@@ -1,0 +1,4 @@
+forecast,mae_lpd,wape_pct,mae_h1,mae_h7,week_total_wape_pct,coverage_80
+trained on original H01–H15,49.8,40.4,46.1,50.6,28.3,0.778
+trained on calibrated H31–H60,49.0,39.8,43.8,50.7,27.2,0.767
+mean of last 7 days (baseline),55.5,45.0,48.5,60.7,33.9,0.726

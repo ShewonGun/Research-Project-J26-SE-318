@@ -1,0 +1,5 @@
+detector,micro_leak_recall,burst_recall,false_alarms_per_day,micro_leak_delay_min,burst_delay_min,caught_total
+all features,99% ± 2%,92% ± 4%,0.08 ± 0.05,10,19,"119/120 leaks, 55/60 bursts"
+without time of day,99% ± 2%,90% ± 6%,0.09 ± 0.04,9,18,"119/120 leaks, 54/60 bursts"
+without time & flow level,99% ± 2%,92% ± 8%,0.08 ± 0.04,30,19,"119/120 leaks, 55/60 bursts"
+without house baseline,100% ± 0%,92% ± 4%,0.09 ± 0.05,9,19,"120/120 leaks, 55/60 bursts"

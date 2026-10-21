@@ -1,0 +1,6 @@
+forecast,mae_lpd,mae_m3_month,wape_pct,median_ape_pct,coverage_80
+last month,155.4,4.72,20.7,11.8,
+mean of last 3,155.0,4.71,20.6,12.2,
+same month last year,209.4,6.37,27.8,18.7,
+12-month median,152.4,4.63,20.3,12.4,
+gradient boosting,137.2,4.17,18.2,11.3,0.796

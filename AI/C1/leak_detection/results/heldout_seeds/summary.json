@@ -1,0 +1,10 @@
+{
+  "false_alarms_per_day": 0.011904761904761904,
+  "events": 40,
+  "micro_leak_recall": 1.0,
+  "micro_leak_caught": "24/24",
+  "micro_leak_median_delay": 9.0,
+  "burst_recall": 1.0,
+  "burst_caught": "16/16",
+  "burst_median_delay": 19.0
+}

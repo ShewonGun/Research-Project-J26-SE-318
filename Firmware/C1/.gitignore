@@ -1,0 +1,4 @@
+.pio
+
+# Wi-Fi credentials and per-board settings (copy include/secrets.example.h to create)
+include/secrets.h

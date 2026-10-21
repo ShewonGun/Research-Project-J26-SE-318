@@ -1,0 +1,105 @@
+{
+  "best_model": "Random Forest",
+  "final_alarms": {
+    "micro_leak": [
+      0.8,
+      2
+    ],
+    "burst": [
+      0.5,
+      20
+    ]
+  },
+  "detectors": [
+    {
+      "detector": "Random Forest",
+      "micro_leak_recall": "99% \u00b1 2%",
+      "burst_recall": "92% \u00b1 4%",
+      "false_alarms_per_day": "0.08 \u00b1 0.05",
+      "micro_leak_delay_min": "10",
+      "burst_delay_min": "19",
+      "caught_total": "119/120 leaks, 55/60 bursts"
+    },
+    {
+      "detector": "Gradient boosting",
+      "micro_leak_recall": "100% \u00b1 0%",
+      "burst_recall": "90% \u00b1 9%",
+      "false_alarms_per_day": "0.14 \u00b1 0.08",
+      "micro_leak_delay_min": "9",
+      "burst_delay_min": "23",
+      "caught_total": "120/120 leaks, 54/60 bursts"
+    },
+    {
+      "detector": "Isolation Forest (no labels)",
+      "micro_leak_recall": "92% \u00b1 7%",
+      "burst_recall": "75% \u00b1 10%",
+      "false_alarms_per_day": "0.16 \u00b1 0.04",
+      "micro_leak_delay_min": "59",
+      "burst_delay_min": "33",
+      "caught_total": "111/120 leaks, 45/60 bursts"
+    },
+    {
+      "detector": "Current backend rules",
+      "micro_leak_recall": "0% \u00b1 0%",
+      "burst_recall": "0% \u00b1 0%",
+      "false_alarms_per_day": "0.00 \u00b1 0.00",
+      "micro_leak_delay_min": "\u2013",
+      "burst_delay_min": "\u2013",
+      "caught_total": "0/120 leaks, 0/60 bursts"
+    }
+  ],
+  "ablation": [
+    {
+      "detector": "all features",
+      "micro_leak_recall": "99% \u00b1 2%",
+      "burst_recall": "92% \u00b1 4%",
+      "false_alarms_per_day": "0.08 \u00b1 0.05",
+      "micro_leak_delay_min": "10",
+      "burst_delay_min": "19",
+      "caught_total": "119/120 leaks, 55/60 bursts"
+    },
+    {
+      "detector": "without time of day",
+      "micro_leak_recall": "99% \u00b1 2%",
+      "burst_recall": "90% \u00b1 6%",
+      "false_alarms_per_day": "0.09 \u00b1 0.04",
+      "micro_leak_delay_min": "9",
+      "burst_delay_min": "18",
+      "caught_total": "119/120 leaks, 54/60 bursts"
+    },
+    {
+      "detector": "without time & flow level",
+      "micro_leak_recall": "99% \u00b1 2%",
+      "burst_recall": "92% \u00b1 8%",
+      "false_alarms_per_day": "0.08 \u00b1 0.04",
+      "micro_leak_delay_min": "30",
+      "burst_delay_min": "19",
+      "caught_total": "119/120 leaks, 55/60 bursts"
+    },
+    {
+      "detector": "without house baseline",
+      "micro_leak_recall": "100% \u00b1 0%",
+      "burst_recall": "92% \u00b1 4%",
+      "false_alarms_per_day": "0.09 \u00b1 0.05",
+      "micro_leak_delay_min": "9",
+      "burst_delay_min": "19",
+      "caught_total": "120/120 leaks, 55/60 bursts"
+    }
+  ],
+  "false_alarms_by_routine": {
+    "day": 0.072,
+    "night_shift": 0.114
+  },
+  "other_data": {
+    "original single-household dataset": {
+      "false_alarms_per_day": 0.0,
+      "events": 5,
+      "micro_leak_recall": 1.0,
+      "micro_leak_caught": "3/3",
+      "micro_leak_median_delay": 9.0,
+      "burst_recall": 1.0,
+      "burst_caught": "2/2",
+      "burst_median_delay": 22.0
+    }
+  }
+}

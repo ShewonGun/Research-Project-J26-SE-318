@@ -1,0 +1,111 @@
+{
+  "realism": {
+    "Real NWSDB households": {
+      "p10": 235.0,
+      "p25": 387.0,
+      "median": 593.0,
+      "p75": 806.0,
+      "p90": 1106.0
+    },
+    "Original simulation": {
+      "p10": 124.0,
+      "p25": 158.0,
+      "median": 259.0,
+      "p75": 340.0,
+      "p90": 405.0
+    },
+    "Calibrated simulation": {
+      "p10": 247.0,
+      "p25": 382.0,
+      "median": 600.0,
+      "p75": 833.0,
+      "p90": 1005.0
+    }
+  },
+  "busy_share": {
+    "original": 0.056,
+    "calibrated": 0.119
+  },
+  "cross_evaluation": [
+    {
+      "setting": "trained on original \u2192 tested on calibrated",
+      "micro_leak_recall": "100% \u00b1 0%",
+      "burst_recall": "82% \u00b1 12%",
+      "false_alarms_per_day": "0.82 \u00b1 0.72",
+      "micro_leak_delay_min": 10.0,
+      "burst_delay_min": 19.0,
+      "caught": "120/120 leaks, 49/60 bursts"
+    },
+    {
+      "setting": "trained on calibrated \u2192 tested on calibrated",
+      "micro_leak_recall": "100% \u00b1 0%",
+      "burst_recall": "83% \u00b1 5%",
+      "false_alarms_per_day": "0.13 \u00b1 0.09",
+      "micro_leak_delay_min": 18.5,
+      "burst_delay_min": 17.5,
+      "caught": "120/120 leaks, 50/60 bursts"
+    },
+    {
+      "setting": "trained on original \u2192 tested on original",
+      "micro_leak_recall": "100% \u00b1 0%",
+      "burst_recall": "87% \u00b1 10%",
+      "false_alarms_per_day": "0.08 \u00b1 0.04",
+      "micro_leak_delay_min": 9.0,
+      "burst_delay_min": 19.0,
+      "caught": "120/120 leaks, 52/60 bursts"
+    },
+    {
+      "setting": "trained on calibrated \u2192 tested on original",
+      "micro_leak_recall": "100% \u00b1 0%",
+      "burst_recall": "88% \u00b1 8%",
+      "false_alarms_per_day": "0.06 \u00b1 0.03",
+      "micro_leak_delay_min": 16.0,
+      "burst_delay_min": 17.0,
+      "caught": "120/120 leaks, 53/60 bursts"
+    }
+  ],
+  "heldout_seeds": [
+    {
+      "setting": "trained on original \u2192 held-out seeds (8)",
+      "micro_leaks": "24/24",
+      "bursts": "15/16",
+      "false_alarms_per_day": 0.0,
+      "micro_leak_delay_min": 8.0,
+      "burst_delay_min": 20.0
+    },
+    {
+      "setting": "trained on calibrated \u2192 held-out seeds (8)",
+      "micro_leaks": "24/24",
+      "bursts": "16/16",
+      "false_alarms_per_day": 0.048,
+      "micro_leak_delay_min": 10.5,
+      "burst_delay_min": 16.5
+    }
+  ],
+  "final_alarms": {
+    "original": {
+      "alarms": {
+        "micro_leak": [
+          0.8,
+          2
+        ],
+        "burst": [
+          0.6,
+          20
+        ]
+      }
+    },
+    "calibrated": {
+      "alarms": {
+        "micro_leak": [
+          0.7,
+          5
+        ],
+        "burst": [
+          0.8,
+          10
+        ]
+      }
+    }
+  }
+}

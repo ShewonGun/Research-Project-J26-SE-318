@@ -1,0 +1,81 @@
+{
+  "households": 30,
+  "test_rows": 3780,
+  "coverage_80": 0.798,
+  "metrics": [
+    {
+      "model": "baseline_week",
+      "h1_mae": 49.45,
+      "h2_mae": 48.91,
+      "h3_mae": 48.72,
+      "h4_mae": 48.32,
+      "h5_mae": 48.3,
+      "h6_mae": 47.82,
+      "h7_mae": 47.88,
+      "mae": 48.54,
+      "mape": 48.89
+    },
+    {
+      "model": "baseline_mean7",
+      "h1_mae": 37.14,
+      "h2_mae": 36.89,
+      "h3_mae": 37.2,
+      "h4_mae": 37.25,
+      "h5_mae": 37.23,
+      "h6_mae": 37.14,
+      "h7_mae": 37.17,
+      "mae": 37.14,
+      "mape": 38.98
+    },
+    {
+      "model": "gbm",
+      "h1_mae": 37.45,
+      "h2_mae": 37.37,
+      "h3_mae": 37.56,
+      "h4_mae": 36.66,
+      "h5_mae": 37.86,
+      "h6_mae": 38.12,
+      "h7_mae": 37.92,
+      "mae": 37.54,
+      "mape": 40.45
+    }
+  ],
+  "totals": [
+    {
+      "next_days": 3,
+      "model": "baseline_week",
+      "mae_litres": 86.3,
+      "mape_pct": 26.2
+    },
+    {
+      "next_days": 3,
+      "model": "baseline_mean7",
+      "mae_litres": 72.2,
+      "mape_pct": 22.1
+    },
+    {
+      "next_days": 3,
+      "model": "gbm",
+      "mae_litres": 70.7,
+      "mape_pct": 22.1
+    },
+    {
+      "next_days": 7,
+      "model": "baseline_week",
+      "mae_litres": 128.8,
+      "mape_pct": 16.3
+    },
+    {
+      "next_days": 7,
+      "model": "baseline_mean7",
+      "mae_litres": 128.8,
+      "mape_pct": 16.3
+    },
+    {
+      "next_days": 7,
+      "model": "gbm",
+      "mae_litres": 124.3,
+      "mape_pct": 16.2
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+# Generated / raw data and logs — regenerate or re-export, don't commit
+data/loop_household/out_seeds/
+data/real/*.csv
+*.log
+leak_detection/results/real_injection/
+__pycache__/
+usage_forecast/results/*.joblib
+usage_forecast/results_patterned/*.joblib
+data/loop_household/out_a1/
+usage_forecast/data/weather_cache.json
+usage_forecast/results_weather/*.joblib
+usage_forecast/results_calibrated_100/*.joblib
