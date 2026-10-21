@@ -1,0 +1,5 @@
+type,caught,total,median_delay_min,recall
+burst,184,200,18.0,0.92
+cistern_leak,151,151,31.0,1.0
+growing_leak,132,132,15.0,1.0
+steady_leak,117,117,17.0,1.0

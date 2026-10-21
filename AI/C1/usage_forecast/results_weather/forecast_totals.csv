@@ -1,0 +1,9 @@
+next_days,model,mae_litres,mape_pct
+3,baseline_week,135.6,70.8
+3,baseline_mean7,107.1,55.9
+3,gbm,98.0,55.4
+3,gbm_cal,97.9,57.7
+7,baseline_week,226.3,33.4
+7,baseline_mean7,226.3,33.4
+7,gbm,194.1,31.2
+7,gbm_cal,190.2,32.0

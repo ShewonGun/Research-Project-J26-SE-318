@@ -1,0 +1,4 @@
+# pySIMDEUM 1.0.1 breaks on pandas >= 2.2 ("Invalid frequency: 1H"); use Python 3.11.
+pysimdeum==1.0.1
+pandas<2.2
+numpy<2

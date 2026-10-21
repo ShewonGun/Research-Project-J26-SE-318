@@ -1,0 +1,499 @@
+AQUAFLOW - MODELS AND DATA: EVERYTHING FOR THE VIVA
+====================================================
+
+Read this top to bottom once. Section 12 has likely questions with short answers, and section 13 is a
+one-page cheat sheet of the numbers.
+
+
+1. THE PROJECT IN FIVE SENTENCES
+--------------------------------
+AquaFlow is a smart water-meter system. An ESP32 with a YF-S201 flow sensor measures how much water a
+household uses and posts a reading about every 6 seconds to a Node.js backend (MongoDB). The web app
+shows live flow, usage history, bills and prepaid balance. On top of that I added two machine-learning
+models: (1) a LEAK / BURST DETECTOR that raises alerts, and (2) a USAGE FORECAST that predicts the next
+7 days of water use and turns that into a prepaid "run-out date", a postpaid "bill estimate" and a
+daily-goal tracker. Both run in a small Python service (FastAPI) that the backend calls.
+
+The physical test rig is a "loop": a small pump circulating water through the sensor. Its flow is about
+3.5 L/min and never above about 4 L/min. A real house has mains pressure and much bigger flows, so
+everything here is "loop scale".
+
+
+2. HOW THE PIECES FIT TOGETHER
+------------------------------
+  ESP32 + flow sensor  --POST /api/readings (flowRate, volume)-->  Backend (Node.js, MongoDB)
+                                                                       |
+         every 60 s, for each online device: last 12 h of readings     |   GET /api/forecast, /api/goals
+                                                                       v
+                                                      Python model service (FastAPI, port 8001)
+                                                        /score    -> leak model (Random Forest)
+                                                        /forecast -> forecast model (gradient boosting)
+                                                                       |
+  Alerts page, Usage page (forecast + goal), admin Usage Forecast page <-- backend --
+
+Folders (all under edge-ai/):
+  data/loop_household   generator for ONE household calibrated on the loop (used as an extra test set)
+  data/simdeum          generator for 30 varied households (main training data)
+  data/real             export of REAL readings from MongoDB (not used for training)
+  leak_detection        leak model: code, training script, results, Colab notebook
+  usage_forecast        forecast model: code, training script, results, weather/holiday code
+  service               the FastAPI service the backend calls
+
+The backend (in backend/) also contains an older RULE-BASED detector. It is kept as the baseline and as
+the automatic valve shut-off for very large flows.
+
+
+3. THE DATA - WHAT IS REAL AND WHAT IS SIMULATED
+-------------------------------------------------
+This is the most important thing to be honest and clear about in a viva.
+
+3.1 What is real
+  - Real readings from the physical device, stored in MongoDB. Used ONLY to measure how the loop behaves
+    (flow level, noise, timing) so the simulator can be calibrated. They are NOT used to train or test
+    the models, because they are too sparse: the device only sent data while the loop was running, which
+    covered about 1% of the time between the first and last reading.
+  - Real weather (Open-Meteo) and real Sri Lankan public holidays, used as inputs to the forecast.
+
+3.2 What the loop measurements say (used to calibrate the simulator)
+  - Sensor: YF-S201, 450 pulses per litre. The firmware turns pulses in the last interval into litres
+    and L/min.
+  - Pump flow: mean about 3.49 L/min. Each run settles at its own level (3.27 to 3.78), drifts slowly
+    during the run, and has reading noise of about 0.07 L/min. Occasional brief dips.
+  - Reading spacing: median 5.77 s (5th to 95th percentile 5.60 to 6.60 s).
+  - Missed readings: about 1.9% of gaps are longer than normal (9 s up to 2 minutes).
+  - Idle noise: about 4.9% of idle readings are non-zero (about half of those are a single pulse = 0.02 L/min,
+    the rest 0.05 to 0.30 L/min).
+  - Water used during a missed reading is lost, not added to the next one (firmware behaviour).
+
+3.3 Simulated data used for the LEAK model (data/simdeum/out)
+  - Generated with pySIMDEUM (Blokker, Vreeburg and van Dijk, 2010, "Simulating residential water demand
+    with a stochastic end-use model"). It builds a random household (people, jobs, fixtures) and simulates
+    every fixture's per-second use: toilets, taps, showers, washing machine, etc.
+  - 30 households: 10 one-person, 10 two-person, 10 families. 25 follow a daytime routine and 5 are
+    night-shift households (routine shifted 10 hours).
+  - 21 days each (1 to 21 October 2026).
+  - Loop adaptation: SIMDEUM assumes mains pressure (a shower is about 8.5 L/min). All flows are scaled
+    by ONE constant so a shower matches the loop's pump level, each run gets its own pump level, and the
+    total is capped at the pump maximum (about 3.95 L/min). Garden watering and tank filling (5 to 30
+    minutes near pump level) are added as hard normal cases so "long flow" alone does not mean "burst".
+  - Then the loop's sensor model (section 3.2) turns the per-second flow into readings with real
+    spacing, missed readings, pulse rounding, noise and dips.
+  - Injected anomalies per household: 4 micro-leaks and 2 bursts = 180 in total (120 micro-leaks and 60
+    bursts). Shapes:
+        steady trickle     0.15 to 1.5 L/min, hours long, under normal use
+        leaking cistern   pump-level refills every 1.5 to 5 minutes
+        growing leak       starts tiny and grows
+        burst              the pump flat out, non-stop, 20 to 75 minutes
+    All anomalies have exact start and end times, so the answer key is exact.
+  - A burst on this loop is capped at pump level (about 3.5 L/min). It is NOT above the backend's old
+    30 L/min rule, so that rule can never see it. The model has to recognise a burst by DURATION and
+    CONTINUITY, not by size.
+
+3.4 Extra test sets for the leak model
+  - data/loop_household/out: one 4-person household, 1 to 21 Oct, 3 micro-leaks and 2 bursts. Made by a
+    different generator (not SIMDEUM), so it is a partial check that the model is not just memorising the
+    SIMDEUM generator.
+  - data/loop_household/out_seeds: 8 more datasets of 21 days each with 5 anomalies each (seeds never used
+    in training): 24 micro-leaks and 16 bursts in total.
+
+3.5 Simulated data for the FORECAST model
+  - The same 30 SIMDEUM households, but 10 weeks (1 July to 9 September 2026) of NORMAL use only (no leaks).
+    Daily litres are summed per Sri Lanka calendar day.
+  - Finding: this data has NO weekly pattern and NO day-to-day memory (daily variation about 36% of the
+    average, weekend/weekday ratio 1.02, correlation with yesterday about 0). The simulator redraws each
+    day independently. So the best possible forecast is the household's own average.
+  - Because real households do have patterns, I made a second dataset (usage_forecast/data/
+    patterned_daily.csv) by multiplying each day by ASSUMED factors (set out in make_patterned_daily.py):
+        weekend uplift       +0 to 25% per household
+        absence spells       about one per 4 weeks, 2 to 6 days, usage x 0.1
+        guest spells         about one per 3 weeks, 1 to 3 days, usage x 1.3
+        slow drift           -0.1% to +0.1% per day
+  - A third dataset (patterned_weather_daily.csv) also applies ASSUMED reactions to the REAL weather and
+    holidays of those dates: +3% per degree of daily maximum above 29 C, -8% on rainy days (5 mm or more),
+    +10% on public holidays.
+  - THESE EFFECT SIZES ARE MY ASSUMPTIONS, NOT MEASUREMENTS. A model improving on them shows the pipeline
+    works, not that real households behave that way.
+
+3.6 Sample data written into the database for the demo
+  - Devices ESP32-A1 and ESP32-A2 contain generated "sample history" readings (tagged synthetic:true in
+    the database) so the forecast and goal screens have something to show. They come from the loop
+    household generator. They are not measurements and must be described as such.
+
+
+4. THE LEAK / BURST MODEL
+-------------------------
+4.1 The task
+  Every minute, say whether the household's recent flow looks like: normal use, a micro-leak, or a burst.
+  The model outputs a probability for each of the three classes. An alarm is raised when a class
+  probability stays high long enough (see 4.4).
+
+4.2 Input: features (computed from past data only - no looking into the future)
+  Readings are first averaged into 1-minute values. A minute is "idle" if its mean flow is below 0.1 L/min
+  and "high" if it is 2.5 L/min or more (pump level). From the last minutes the model builds 27 features
+  in three groups:
+    Continuity (16)  how long flow has run without stopping; how long since the house was last quiet
+                     (10 or 30 min); the fraction of the last 10/30/60/180 minutes that were idle; the
+                     minimum flow over the last 10/30/60/180 minutes; the fraction of high-flow minutes;
+                     the number of on/off switches in the last hour.
+    Level (9)        current flow; mean and standard deviation over 10/30/60 minutes; the maximum over
+                     10 minutes; litres in the last hour.
+    Time of day (2)  sine and cosine of the local hour.
+  A fourth group, "house baseline" (comparison with the house's own last week), was tested and then
+  REMOVED from the final model because it did not help (see the ablation in 4.6).
+  Why these: a leak is about flow that never stops. A normal tap use or pump run lasts seconds to a couple
+  of minutes. A leak keeps minimum flow above zero for hours; a burst keeps the pump at full level for far
+  longer than any fixture.
+
+4.3 The algorithm: Random Forest
+  A Random Forest classifier: 150 decision trees, at least 20 samples per leaf, balanced class weights
+  (so the rare leak minutes are not drowned out by normal minutes). Training set: every anomaly minute
+  plus a random 25% of normal minutes from the training households.
+  Why a Random Forest: it works well on tabular, engineered features; it needs little tuning; it gives
+  probabilities; it is fast enough to run for every device every minute; and it can be inspected
+  (feature importance). I also trained gradient boosting and an Isolation Forest to compare.
+    - Gradient boosting: similar recall but more false alarms (0.14 per day against 0.08).
+    - Isolation Forest: UNSUPERVISED. It is trained only on normal minutes and flags anything unusual, so
+      it needs no leak labels. It was worse (burst recall 75%, micro-leak delay 59 minutes) but it is the
+      option if labelled leaks are not available in a real deployment.
+
+4.4 Turning probabilities into alarms
+  For each class (micro_leak, burst) an alarm is active when its probability is at or above a THRESHOLD
+  for at least PERSIST consecutive minutes. The two numbers per class were chosen automatically on
+  validation households: of all combinations (threshold 0.3 to 0.98, persistence 1 to 30 minutes), keep
+  those that stay under the false-alarm budget (0.05 per day per alarm) and pick the one with the highest
+  recall, then the shortest delay. Final values:
+        micro-leak alarm:  probability >= 0.8 for 2 minutes
+        burst alarm:       probability >= 0.5 for 20 minutes
+  The burst alarm needs 20 minutes, which is why bursts are detected after about 19 minutes on average
+  (they are 20 to 75 minutes long). That long persistence is what separates a burst from a long garden
+  watering session.
+
+4.5 How it was trained and tested
+  - 6-fold cross-validation BY HOUSEHOLD: the 30 households are split into 6 groups of 5. Each group is
+    tested by a model trained on households it has never seen. This matters because a model can memorise
+    one household's routine; testing on new households shows whether it generalises.
+  - Inside each fold, some households are used to tune the alarm thresholds, never the test ones.
+  - The final saved model is trained on households 1 to 25 and its alarm settings tuned on 26 to 30.
+  - Metrics are EVENT-level, not minute accuracy:
+        caught         the alarm was active at some minute between the event's start and end
+        delay          minutes from the event's start to the first alarm minute
+        false alarm    an alarm that overlaps no anomaly (with a 30-minute grace after each one)
+        false alarms per day   counted over the whole test period
+    Plain accuracy would be meaningless: about 99% of minutes are normal, so a model that never
+    alarms would score 99%.
+
+4.6 Results (cross-validation on the 30 simulated households, Random Forest)
+        Micro-leaks caught   99%  (119 of 120)    median delay 10 minutes
+        Bursts caught        92%  (55 of 60)      median delay 19 minutes
+        False alarms         0.08 +/- 0.05 per day (about one every two weeks per house)
+  Other detectors, same test:
+        Gradient boosting    micro 100%, burst 90%, 0.14 false alarms per day
+        Isolation Forest     micro 92%,  burst 75%, 0.16 per day, delays 59 and 33 minutes
+        Old backend rules    0% and 0%  (see the question in section 12)
+  By anomaly shape: steady 42/42, growing 39/39 (found in 6 minutes), leaking cistern 38/39 (26 min),
+  burst 55/60.
+  Ablation (what happens when features are removed): without time of day - about the same; without time
+  and flow level - recall the same but micro-leak detection slows to 30 minutes; without the house
+  baseline - slightly better, so it was dropped.
+  False alarms by household type: family 0.10, one-person 0.076, two-person 0.062 per day; by routine:
+  day 0.07, night-shift 0.11 per day.
+  Extra test sets: the single-household set 3/3 micro-leaks and 2/2 bursts; the 8 unseen 21-day datasets
+  24/24 micro-leaks and 16/16 bursts with 0.01 false alarms per day.
+  The standard deviations (+/-) are across the 6 folds.
+
+4.7 How it behaves when the system is running
+  - Every 60 seconds the backend takes each ONLINE device, collects its last 12 hours of readings and
+    sends them to the service. The service averages them into minutes, drops the minute still in progress,
+    clamps flows above 6 L/min (loop scale), builds the features and runs the model.
+  - Needs at least 30 minutes of history, and ignores a device silent for more than 3 minutes.
+  - An alarm counts as active if it fired at any time in the last 10 minutes (a leaking cistern has quiet
+    minutes between refills).
+  - The backend creates an alert marked source "model" (warning for micro-leak, critical for burst) and
+    shows it in the Alerts pages with an "AI model" tag. It auto-resolves a micro-leak alert when the
+    alarm stays quiet.
+  - Valve: by default the model only ALERTS. Setting MODEL_AUTO_SHUTOFF=true lets it also close the valve
+    when the burst alarm is active, its probability is at least 0.7, and the pump is still running (latest
+    reading at least 2 L/min and under 2 minutes old). Such an alert is never auto-resolved: a person must
+    mark it fixed before supply can be restored (this reuses the existing safety lock).
+  - The rule-based detector still runs: a flow of 30 L/min or more for 3 consecutive readings closes the
+    valve (3 readings, so one 769 L/min sensor glitch cannot cut off a household). It cannot fire on the
+    loop (max 4 L/min).
+
+
+5. THE USAGE FORECAST MODEL
+---------------------------
+5.1 The task
+  At the end of each day, predict how many litres the household will use on each of the next 7 days, with
+  an 80% range. Use only that household's own recent daily totals (no house type or number of people -
+  a real device does not know them).
+
+5.2 Inputs (features)
+  - The last 14 daily totals, each divided by the median of those 14 days (so one model suits a 1-person
+    and a 5-person home).
+  - Mean and standard deviation of the last 7 days, the mean of 14, the minimum of the last 3.
+  - The value 7 days before the target day.
+  - The target day's weekday (as sine/cosine) and a weekend flag; the horizon (1 to 7 days ahead).
+  - Optional calendar inputs for the target day: maximum temperature, rainfall, a "rainy" flag (5 mm or
+    more), public-holiday flag, day-before/after-holiday flag.
+
+5.3 The algorithm: gradient boosting regression
+  scikit-learn HistGradientBoostingRegressor (300 iterations, learning rate 0.05, 15 leaves). One model
+  covers all 7 horizons. It predicts the ratio to the household's median and is multiplied back.
+  Why: tabular lag features, small data, fast, no heavy infrastructure. I did not use an LSTM or Prophet
+  because there is little data (30 simulated households x 10 weeks), nothing to gain from deep sequence
+  models, and a simple model is easier to explain and to retrain.
+
+5.4 The prediction range
+  The 80% range is the forecast plus or minus the 80th percentile of the absolute error at that horizon,
+  measured on the OTHER folds. Measured coverage is 80%, as intended.
+
+5.5 Testing
+  6-fold cross-validation by household. The test rows are each held-out household's last 21 days of
+  forecast starting points. Baselines: "same weekday last week" and "mean of the last 7 days".
+
+5.6 Results (mean absolute error in litres per day; lower is better)
+  Pattern-free simulated data (SIMDEUM as generated):
+        same weekday last week   48.5
+        mean of last 7 days      37.1
+        gradient boosting        37.5      -> no better than the average
+  With assumed weekly / absence / guest patterns:
+        same weekday last week   60.7
+        mean of last 7 days      49.4
+        gradient boosting        45.6      -> about 8% better than the average
+  With assumed weather and holiday effects, without and with the calendar inputs:
+        mean of last 7 days      51.2
+        gradient boosting        47.6
+        gradient boosting + weather and holidays   46.9    -> about 1.3% better
+  Error on 7-day totals (what the run-out date and bill use): on the patterned data 188 L against 221 L
+  for the average (about 15% better, error about 31% of the true total); on the weather data 190 L
+  against 226 L.
+  Importance of the calendar inputs (weather dataset): maximum temperature, rainfall and the holiday flag
+  all rank among the top 10 features.
+  HONEST READING: a single day is inherently noisy (about 20 to 40% error), and the gains above come from
+  patterns I put into the data. The true value of the weather and holiday inputs can only be measured
+  once real usage history exists.
+
+5.7 Weather and holidays
+  - Weather: Open-Meteo (free, no key). History comes from a reanalysis on a 10 to 25 km grid - good for
+    temperature, only roughly right for rainfall. The forecast is reasonable for 2 to 3 days and rough
+    beyond that. Cached on disk and refreshed every 3 hours in the background; if the internet is down the
+    last values are used, and if there are none the forecast silently uses the model without weather.
+  - Holidays: the Python "holidays" package for Sri Lanka (Poya days, New Year, Vesak, etc.) plus a file
+    (holidays_override.csv) for gazette corrections, since moon-dependent dates such as Eid can be a day
+    out.
+  - Location is one default (Colombo); devices do not store coordinates.
+
+5.8 What the backend does with the forecast
+  - History: the last 14 complete local days. A day with no readings counts as UNKNOWN, not zero.
+  - With 7 or more of the 14 days present the model is used (missing days are filled with the
+    household's median). With 3 to 6 days it falls back to a plain average and says so. With fewer than 3
+    it gives no forecast.
+  - Prepaid RUN-OUT DATE: take the remaining balance and subtract the forecast day by day (today's
+    remainder first, then each following day, then the average rate beyond 7 days). Gives a best estimate
+    plus earliest (heavy use) and latest (light use) dates, and is capped by the plan's expiry date.
+  - Postpaid BILL ESTIMATE: litres used so far in the open cycle plus the forecast to the end of an
+    assumed 30-day cycle (cycles are closed by an admin, so this is an assumption), priced with the
+    active tariff (rising-block tiers + fixed charge). Low / mid / high estimates.
+  - DAILY GOAL: a household sets a litre target. The page shows used-so-far, expected total by midnight
+    (used so far plus the forecast for the rest of today), a status (on track / close / over), the 7-day
+    forecast against the goal, how many days were under goal, the effect on the balance or the bill, and
+    up to 3 rule-based tips (overnight use, peak-hour share, weekend vs weekday, days forecast over goal).
+
+
+6. THE REST OF THE SYSTEM (BRIEFLY)
+-----------------------------------
+  - Billing modes: prepaid (a purchased plan is drawn down by each reading; low balance throttles, empty
+    closes the valve) and postpaid (usage accrues to a monthly bill).
+  - Valves: a provider gate (admin) and a household tap; water flows only if both allow it. An unresolved
+    leak alert blocks reopening the supply until someone marks it fixed.
+  - Live chart: a socket pushes each new reading; the chart can also show 1 hour, 6 hours, 24 hours or 7
+    days as averaged bins.
+  - Roles: admin and household user; a user sees only their own devices.
+  - Readings are stored in a MongoDB time-series collection and DELETED AUTOMATICALLY after 90 days.
+
+
+7. HOW TO RUN IT FOR A DEMO
+---------------------------
+  Window 1:  cd edge-ai\service   then   python -m uvicorn app:app --port 8001
+  Window 2:  cd backend           then   npm run dev     (needs LEAK_MODEL_URL=http://localhost:8001 in .env)
+  Window 3:  cd frontend          then   npm run dev
+  To show a model alert:   cd backend   then   node simulation/modelCheckA2.js burst --replace
+  To show a live stream:   node simulation/streamToA2.js burst --minutes 5
+  Optional shut-off:       add MODEL_AUTO_SHUTOFF=true to backend/.env and restart the backend.
+  Before presenting: top up the sample data so "today" is not empty, and check the device valve is open.
+
+
+8. LIMITATIONS - SAY THESE BEFORE THE EXAMINER DOES
+---------------------------------------------------
+  1. All accuracy figures are on SIMULATED data. The leaks are injected by the same family of generator
+     that made the training data, so the results show the model learned what the simulator produces. They
+     do not prove it finds real faults.
+  2. A test on real loop readings was attempted and was INVALID: the real data covers only about 1% of the
+     time, so most injected leaks fell in gaps with no readings. One continuous real run of a few hours
+     would fix this and is the main piece of future work.
+  3. Loop scale only. The models were trained on flows up to about 4 L/min. A real house has flows of 8 to
+     15 L/min and real pipe breaks above 30 L/min. They would need retraining at that scale.
+  4. SIMDEUM's statistics are Dutch defaults, scaled down to the loop - not Sri Lankan households. The
+     daily litre totals (about 245 L/day for a 4-person household on the loop) follow that scaled routine;
+     the real loop's daily running time has not been measured.
+  5. A burst takes about 20 minutes to be flagged, and a perfectly flat unrealistic burst scored right at
+     the threshold; real pump drift and dips help.
+  6. Long legitimate use (garden watering for 30 minutes or more) can look like a burst. A false burst
+     would be costly if shut-off is on, which is why it is off by default.
+  7. The forecast's weekly, absence, weather and holiday effects are assumptions. Real gains need real
+     usage history. Day-level forecasts stay noisy; multi-day totals are more reliable.
+  8. Weather data is approximate (rainfall especially) and uses a single location.
+  9. Security gaps: the reading endpoint trusts the device ID with no secret key, CORS is fully open, there
+     is no rate limiting, and the model service has no authentication (it runs on localhost).
+  10. No automated tests or CI.
+  11. Sensor glitches (readings of several hundred L/min were seen) still count towards litres and billing;
+     only the valve rule is protected from them.
+
+
+9. WHAT I WOULD DO NEXT
+-----------------------
+  - A few hours of continuous real loop running to validate both models on real data.
+  - Retrain the leak model on real labelled events and the forecast on real usage history.
+  - Per-device secret keys, notifications (SMS or email) and a "false alarm" button that feeds labels back.
+  - Appliance recognition (shower, toilet, tap) from the flow signature.
+  - Tests and CI, and Docker for one-command setup.
+
+
+10. KEY DESIGN DECISIONS AND WHY
+--------------------------------
+  - Event-level metrics and a false-alarm budget instead of accuracy, because normal minutes are 99% of
+    the data and what matters to a household is "did it catch the leak, how fast, how often does it cry
+    wolf".
+  - Cross-validation by household, not by time, to show generalisation to new homes.
+  - A simulator calibrated on the physical loop, because real labelled leaks are rare, dangerous to create
+    and impossible to collect in a project timeframe.
+  - Alert-only by default, because an automatic valve shut-off on an unvalidated model can cut off water
+    wrongly.
+  - Keeping the old rules as the baseline, and as the shut-off for huge flows.
+  - A plain 7-day average as the forecast baseline, so the model's value is measured honestly.
+
+
+11. GLOSSARY
+------------
+  Micro-leak        a continuous low flow (a dripping tap or leaking cistern) under normal use.
+  Burst             a pipe break; on the loop, the pump running flat out for a long time.
+  Recall            the share of real events the detector catches.
+  False alarm       an alert when nothing was wrong.
+  Delay             time from the event starting to the first alarm.
+  Cross-validation  splitting the data into groups and testing each group on a model trained on the rest.
+  Persistence       how many minutes the probability must stay high before an alarm fires.
+  Ablation          removing a feature group to see whether it mattered.
+  MAE / MAPE        mean absolute error in litres / as a percentage of the true value.
+  Prepaid / postpaid  buying a litre plan in advance / being billed monthly for use.
+  SIMDEUM           a published stochastic model of household water use.
+  Time-series collection  a MongoDB collection type optimised for timestamped readings.
+
+
+12. LIKELY VIVA QUESTIONS (SHORT ANSWERS)
+-----------------------------------------
+Q: What does your leak model actually do?
+A: Each minute it reads the last few hours of flow, builds 27 features about how continuous and how large
+   the flow is, and a Random Forest gives the probability of normal / micro-leak / burst. If a probability
+   stays above a tuned threshold for a tuned number of minutes, an alert is raised.
+
+Q: Why a Random Forest and not deep learning?
+A: The input is a small set of engineered features, the data is limited, I needed fast per-minute
+   predictions for many devices, and a forest is easy to explain and inspect. A neural network would add
+   complexity without evidence of benefit at this data size.
+
+Q: How is it trained? What data?
+A: On 30 simulated households (SIMDEUM routines scaled to the loop and passed through a sensor model
+   calibrated on the real device) with 180 injected leaks and bursts. Tested by 6-fold cross-validation
+   across households, so each test household was never seen in training.
+
+Q: Why not simply use accuracy?
+A: 99% of minutes are normal, so a model that never alarms scores 99%. I report how many leaks are caught,
+   how quickly, and how many false alarms per day.
+
+Q: What are your results?
+A: Micro-leaks 99% caught in about 10 minutes, bursts 92% in about 19 minutes, 0.08 false alarms per day.
+   On 8 extra unseen datasets, 24/24 and 16/16 with 0.01 false alarms per day.
+
+Q: Why did the old rule catch 0%?
+A: The old rule flags a burst at 30 L/min or more, and the loop's pump never exceeds about 4 L/min, so it
+   cannot ever fire. It is a mismatch between a mains-scale threshold and the loop, not a claim that rules
+   are always useless.
+
+Q: Is the data real?
+A: The flow behaviour, noise, timing and sensor are measured from the real loop; the household routines
+   are simulated and the leaks are injected. I say this explicitly. Real validation is future work.
+
+Q: Is training on simulated data valid?
+A: It is a reasonable first step when real labelled leaks are not available, and the simulator is
+   calibrated on measurements. But the results show the pipeline and the model design work, not real-world
+   accuracy. I used generators from two different families as a partial check.
+
+Q: How do you prevent data leakage?
+A: Features use only past data; whole households are held out in cross-validation; alarm thresholds are
+   tuned on separate validation households, never on test ones.
+
+Q: Why does a burst need 20 minutes to be flagged?
+A: On the loop, a burst looks like the pump running flat out. A long legitimate use such as watering or
+   filling a tank can last up to 30 minutes, so short flows cannot be called bursts. The persistence value
+   was chosen automatically to stay under the false-alarm budget.
+
+Q: What is the Isolation Forest for?
+A: It is an unsupervised comparison: trained only on normal data, it flags anything unusual. It needs no
+   labelled leaks, so it is the fallback when labels are not available. It was less accurate.
+
+Q: What happens if the model service is down?
+A: The backend logs an error and the rule-based detector keeps working. The Usage page falls back to its
+   simple estimate.
+
+Q: Does the model close the valve?
+A: Not by default. It can, by a setting, when the burst alarm is active, confidence is at least 70% and the
+   pump is still running. Such an alert needs a person to mark it fixed.
+
+Q: How does the forecast work and why is it not much better than an average?
+A: A gradient boosting model on the last 14 days (relative to the household's median). In pure simulated
+   data, daily use has no pattern and no memory, so the average is already the best possible forecast and
+   the model matches it. When weekly, absence and weather patterns exist, it is 8% better.
+
+Q: Where do the weather effects come from?
+A: The weather and holiday dates are real; the size of their effect on usage in the training data is my
+   assumption (for example +3% per degree). The model learning them shows the pipeline works. Real effect
+   sizes need real history.
+
+Q: How accurate is the run-out date?
+A: It is as accurate as the daily forecast, but errors partly cancel over several days. A 7-day total has
+   an error of about 15 to 30%, so it reports an earliest-latest range and not a single moment.
+
+Q: Why did you choose a 30-day bill cycle?
+A: Cycles are closed manually by an admin, so there is no fixed end date. 30 days is a documented
+   assumption, set by one constant.
+
+Q: What are the privacy implications?
+A: Fine-grained usage reveals when people are home. Data is tied to accounts, visible only to the owner
+   and admins, and should be encrypted and access-controlled in a real deployment.
+
+Q: What would make it work on a real house?
+A: Collect real labelled readings, retrain at household flow scale, measure real false-alarm rates, add
+   device authentication, and keep the shut-off as a person-approved action until validated.
+
+Q: What did you contribute versus use from libraries?
+A: The calibrated simulator pipeline, the feature design, the alarm tuning, the evaluation method, the
+   service and backend integration, the forecast with run-out/bill/goal features, and the UI. I used
+   scikit-learn, pySIMDEUM, FastAPI, Open-Meteo and the holidays package as tools.
+
+
+13. CHEAT SHEET OF NUMBERS
+--------------------------
+  Loop pump flow            about 3.5 L/min (max about 3.95); sensor 450 pulses/L; readings every ~5.8 s
+  Leak training data        30 households x 21 days, 180 anomalies (120 micro-leak + 60 burst)
+  Households                10 one-person, 10 two-person, 10 family; 5 night-shift
+  Leak model                Random Forest, 150 trees, 27 features, 3 classes, 6-fold CV by household
+  Alarm settings            micro-leak: >=0.8 for 2 min;  burst: >=0.5 for 20 min
+  False-alarm budget        0.05 per day per alarm while tuning
+  Results                   micro 99% (10 min), burst 92% (19 min), 0.08 false alarms/day
+  Unseen datasets           8 x 21 days: 24/24 micro, 16/16 burst, 0.01 false alarms/day
+  Forecast training data    30 households x 10 weeks, daily litres, normal use only
+  Forecast model            gradient boosting, 14-day relative lags, 1 to 7 days ahead, 80% range
+  Forecast error (litres)   pattern-free 37.5 vs 37.1 (average); patterned 45.6 vs 49.4; weather 46.9 vs 51.2
+  Valve rule                30 L/min for 3 consecutive readings (rule-based); model shut-off off by default
+  Sweep                     every 60 s, last 12 h of readings, alarm latched 10 min
+  Reading retention         90 days (automatic deletion)

@@ -1,0 +1,108 @@
+{
+  "households": 30,
+  "test_rows": 3780,
+  "coverage_80": {
+    "gbm": 0.797,
+    "gbm_cal": 0.794
+  },
+  "metrics": [
+    {
+      "model": "baseline_week",
+      "h1_mae": 64.59,
+      "h2_mae": 64.19,
+      "h3_mae": 63.59,
+      "h4_mae": 62.38,
+      "h5_mae": 62.11,
+      "h6_mae": 62.34,
+      "h7_mae": 62.29,
+      "mae": 63.17,
+      "mape": 117.7
+    },
+    {
+      "model": "baseline_mean7",
+      "h1_mae": 48.04,
+      "h2_mae": 49.56,
+      "h3_mae": 51.13,
+      "h4_mae": 51.68,
+      "h5_mae": 52.15,
+      "h6_mae": 53.35,
+      "h7_mae": 54.02,
+      "mae": 51.21,
+      "mape": 100.42
+    },
+    {
+      "model": "gbm",
+      "h1_mae": 45.06,
+      "h2_mae": 47.05,
+      "h3_mae": 48.5,
+      "h4_mae": 47.81,
+      "h5_mae": 47.8,
+      "h6_mae": 49.22,
+      "h7_mae": 48.22,
+      "mae": 47.56,
+      "mape": 99.69
+    },
+    {
+      "model": "gbm_cal",
+      "h1_mae": 45.01,
+      "h2_mae": 46.56,
+      "h3_mae": 48.13,
+      "h4_mae": 47.01,
+      "h5_mae": 47.21,
+      "h6_mae": 47.57,
+      "h7_mae": 47.69,
+      "mae": 46.95,
+      "mape": 102.49
+    }
+  ],
+  "totals": [
+    {
+      "next_days": 3,
+      "model": "baseline_week",
+      "mae_litres": 135.6,
+      "mape_pct": 70.8
+    },
+    {
+      "next_days": 3,
+      "model": "baseline_mean7",
+      "mae_litres": 107.1,
+      "mape_pct": 55.9
+    },
+    {
+      "next_days": 3,
+      "model": "gbm",
+      "mae_litres": 98.0,
+      "mape_pct": 55.4
+    },
+    {
+      "next_days": 3,
+      "model": "gbm_cal",
+      "mae_litres": 97.9,
+      "mape_pct": 57.7
+    },
+    {
+      "next_days": 7,
+      "model": "baseline_week",
+      "mae_litres": 226.3,
+      "mape_pct": 33.4
+    },
+    {
+      "next_days": 7,
+      "model": "baseline_mean7",
+      "mae_litres": 226.3,
+      "mape_pct": 33.4
+    },
+    {
+      "next_days": 7,
+      "model": "gbm",
+      "mae_litres": 194.1,
+      "mape_pct": 31.2
+    },
+    {
+      "next_days": 7,
+      "model": "gbm_cal",
+      "mae_litres": 190.2,
+      "mape_pct": 32.0
+    }
+  ]
+}
