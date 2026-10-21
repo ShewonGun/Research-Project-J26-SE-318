@@ -1,0 +1,33 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Node.js dependencies and generated output
+node_modules/
+dist/
+build/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python environments, caches, and bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated forecasting model artifacts
+ai/saved_models/demand_forecast_model.*
+AI/C3/saved_models/demand_forecast_model.*
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+*.pyc
