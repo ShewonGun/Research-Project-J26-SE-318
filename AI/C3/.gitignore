@@ -1,0 +1,10 @@
+# Local Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Generated model artifacts
+saved_models/
+forecasting/demand_forecast_model.pkl
