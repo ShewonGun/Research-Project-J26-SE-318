@@ -1,0 +1,31 @@
+{
+  "name": "research-project-j26-se-318",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "test": "node --test tests/pp1.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShewonGun/Research-Project-J26-SE-318.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ShewonGun/Research-Project-J26-SE-318/issues"
+  },
+  "homepage": "https://github.com/ShewonGun/Research-Project-J26-SE-318#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "csv-parser": "^3.2.1",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
